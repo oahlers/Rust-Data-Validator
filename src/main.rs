@@ -75,9 +75,24 @@ struct ProductValidationResponse {
     product_name: Option<String>,
     overall_status: ValidationStatus,
     summary: ValidationSummary,
+    validation_statuses: ValidationStatuses,
     normalized_data: NormalizedProductData,
     pallet_calculation: Option<PalletCalculation>,
     validations: Vec<ValidationResult>,
+}
+
+#[derive(Debug, Serialize)]
+struct ValidationStatuses {
+    unit_conversion: Option<ValidationStatus>,
+    net_vs_gross_weight: Option<ValidationStatus>,
+    carton_weight_validation: Option<ValidationStatus>,
+    width_depth_validation: Option<ValidationStatus>,
+    volume_validation: Option<ValidationStatus>,
+    ean13_validation: Option<ValidationStatus>,
+    gtin14_validation: Option<ValidationStatus>,
+    cases_per_layer_validation: Option<ValidationStatus>,
+    pallet_height_validation: Option<ValidationStatus>,
+    units_per_pallet_validation: Option<ValidationStatus>,
 }
 
 #[derive(Debug, Serialize)]
@@ -550,11 +565,25 @@ fn validate_product(
         ValidationStatus::Pass
     };
 
+    let validation_statuses = ValidationStatuses {
+        unit_conversion: validation_status_for(&validations, "unit_conversion"),
+        net_vs_gross_weight: validation_status_for(&validations, "net_vs_gross_weight"),
+        carton_weight_validation: validation_status_for(&validations, "carton_weight_validation"),
+        width_depth_validation: validation_status_for(&validations, "width_depth_validation"),
+        volume_validation: validation_status_for(&validations, "volume_validation"),
+        ean13_validation: validation_status_for(&validations, "ean13_validation"),
+        gtin14_validation: validation_status_for(&validations, "gtin14_validation"),
+        cases_per_layer_validation: validation_status_for(&validations, "cases_per_layer_validation"),
+        pallet_height_validation: validation_status_for(&validations, "pallet_height_validation"),
+        units_per_pallet_validation: validation_status_for(&validations, "units_per_pallet_validation"),
+    };
+
     Ok(ProductValidationResponse {
         sku: product.sku,
         product_name: product.product_name,
         overall_status,
         summary: ValidationSummary { passed, warnings, failed },
+        validation_statuses,
         normalized_data: NormalizedProductData {
             net_weight_g: round(net_weight_g),
             gross_weight_g: round(gross_weight_g),
@@ -570,6 +599,15 @@ fn validate_product(
         pallet_calculation,
         validations,
     })
+}
+fn validation_status_for(
+    validations: &[ValidationResult],
+    rule_name: &str,
+) -> Option<ValidationStatus> {
+    validations
+        .iter()
+        .find(|validation| validation.rule == rule_name)
+        .map(|validation| validation.status.clone())
 }
 
 fn result(rule: &str, status: ValidationStatus, message: &str, details: Value) -> ValidationResult {

@@ -1,0 +1,14 @@
+{
+  "sku":"EAN-PASS-REAL",
+  "ean13":"4006381333931",
+  "net_weight":500,
+  "gross_weight":550,
+  "weight_unit":"g",
+  "width":10,
+  "depth":5,
+  "height":15,
+  "dimension_unit":"cm",
+  "units_per_carton":6,
+  "carton_weight":3500,
+  "carton_weight_unit":"g"
+}
