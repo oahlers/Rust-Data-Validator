@@ -582,19 +582,69 @@ fn result(rule: &str, status: ValidationStatus, message: &str, details: Value) -
 }
 
 fn validate_gtin(value: &str, expected_length: usize) -> bool {
-    if value.len() != expected_length || !value.chars().all(|c| c.is_ascii_digit()) {
+    if !matches!(expected_length, 13 | 14) {
         return false;
     }
-    let digits: Vec<u32> = value.chars().filter_map(|c| c.to_digit(10)).collect();
-    let check_digit = digits[expected_length - 1];
-    let body = &digits[..expected_length - 1];
-    let mut sum = 0u32;
-    for (index_from_right, digit) in body.iter().rev().enumerate() {
-        let weight = if index_from_right % 2 == 0 { 3 } else { 1 };
-        sum += digit * weight;
+
+    if value.len() != expected_length || !value.bytes().all(|b| b.is_ascii_digit()) {
+        return false;
     }
-    let calculated = (10 - (sum % 10)) % 10;
-    calculated == check_digit
+
+    let digits: Vec<u32> = value
+        .bytes()
+        .map(|b| u32::from(b - b'0'))
+        .collect();
+
+    let supplied_check_digit = digits[expected_length - 1];
+    let data_digits = &digits[..expected_length - 1];
+
+    let weighted_sum: u32 = data_digits
+        .iter()
+        .rev()
+        .enumerate()
+        .map(|(index_from_right, digit)| {
+            let weight = if index_from_right % 2 == 0 { 3 } else { 1 };
+            digit * weight
+        })
+        .sum();
+
+    let calculated_check_digit = (10 - (weighted_sum % 10)) % 10;
+    calculated_check_digit == supplied_check_digit
+}
+
+#[cfg(test)]
+mod gtin_tests {
+    use super::validate_gtin;
+
+    #[test]
+    fn accepts_known_valid_ean13_values() {
+        assert!(validate_gtin("5901234123457", 13));
+        assert!(validate_gtin("4006381333931", 13));
+        assert!(validate_gtin("6291041500213", 13));
+    }
+
+    #[test]
+    fn rejects_invalid_ean13_values() {
+        assert!(!validate_gtin("5701234567893", 13));
+        assert!(!validate_gtin("5701234567890", 13));
+        assert!(!validate_gtin("5901234123450", 13));
+    }
+
+    #[test]
+    fn accepts_correct_check_digit_for_570123456789() {
+        assert!(validate_gtin("5701234567899", 13));
+    }
+
+    #[test]
+    fn preserves_and_validates_leading_zeroes() {
+        assert!(validate_gtin("0123456789012", 13));
+    }
+
+    #[test]
+    fn rejects_wrong_length_and_non_digits() {
+        assert!(!validate_gtin("123", 13));
+        assert!(!validate_gtin("590123412345X", 13));
+    }
 }
 
 fn validate_positive_value(field: &str, value: f64) -> Result<(), (StatusCode, Json<ApiError>)> {
