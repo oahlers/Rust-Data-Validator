@@ -27,6 +27,7 @@ struct ProductValidationRequest {
     units_per_carton: u32,
     carton_weight: f64,
     carton_weight_unit: String,
+<<<<<<< HEAD
     pallet: Option<PalletData>,
 }
 
@@ -38,6 +39,8 @@ struct PalletData {
     height_unit: String,
     pallet_base_height: f64,
     max_total_height: f64,
+=======
+>>>>>>> 67ed8ca655005b5a297ff1950244a04a7de20483
 }
 
 #[derive(Debug, Serialize)]
@@ -47,7 +50,10 @@ struct ProductValidationResponse {
     overall_status: ValidationStatus,
     summary: ValidationSummary,
     normalized_data: NormalizedProductData,
+<<<<<<< HEAD
     pallet_calculation: Option<PalletCalculation>,
+=======
+>>>>>>> 67ed8ca655005b5a297ff1950244a04a7de20483
     validations: Vec<ValidationResult>,
 }
 
@@ -87,6 +93,7 @@ struct NormalizedProductData {
 }
 
 #[derive(Debug, Serialize)]
+<<<<<<< HEAD
 struct PalletCalculation {
     cases_per_layer: u32,
     layers_per_pallet: u32,
@@ -101,6 +108,8 @@ struct PalletCalculation {
 }
 
 #[derive(Debug, Serialize)]
+=======
+>>>>>>> 67ed8ca655005b5a297ff1950244a04a7de20483
 struct HealthResponse {
     status: &'static str,
     service: &'static str,
@@ -154,7 +163,11 @@ async fn main() {
 async fn root() -> Json<Value> {
     Json(json!({
         "service": "Saether Product Data Validator",
+<<<<<<< HEAD
         "version": "1.1.0",
+=======
+        "version": "1.0.0",
+>>>>>>> 67ed8ca655005b5a297ff1950244a04a7de20483
         "status": "running",
         "endpoints": {
             "health": "/health",
@@ -168,7 +181,11 @@ async fn health() -> Json<HealthResponse> {
     Json(HealthResponse {
         status: "ok",
         service: "product-data-validator",
+<<<<<<< HEAD
         version: "1.1.0",
+=======
+        version: "1.0.0",
+>>>>>>> 67ed8ca655005b5a297ff1950244a04a7de20483
     })
 }
 
@@ -197,10 +214,19 @@ async fn validate_product(
         "carton_weight_unit",
     )?;
 
+<<<<<<< HEAD
     let width_cm = convert_dimension_to_centimetres(product.width, &product.dimension_unit, "dimension_unit")?;
     let depth_cm = convert_dimension_to_centimetres(product.depth, &product.dimension_unit, "dimension_unit")?;
     let height_cm = convert_dimension_to_centimetres(product.height, &product.dimension_unit, "dimension_unit")?;
 
+=======
+    let width_cm = convert_dimension_to_centimetres(product.width, &product.dimension_unit)?;
+    let depth_cm = convert_dimension_to_centimetres(product.depth, &product.dimension_unit)?;
+    let height_cm = convert_dimension_to_centimetres(product.height, &product.dimension_unit)?;
+
+    // Business rule: carton weight must at least equal the combined gross weight
+    // of all sellable units in the carton.
+>>>>>>> 67ed8ca655005b5a297ff1950244a04a7de20483
     let expected_minimum_carton_weight_g = gross_weight_g * product.units_per_carton as f64;
     let mut validations = Vec::new();
 
@@ -293,6 +319,7 @@ async fn validate_product(
         });
     }
 
+<<<<<<< HEAD
     let pallet_calculation = if let Some(pallet) = product.pallet {
         if pallet.cases_per_layer == 0 {
             return Err(bad_request("pallet.cases_per_layer", "Cases per layer must be greater than zero."));
@@ -374,6 +401,8 @@ async fn validate_product(
         None
     };
 
+=======
+>>>>>>> 67ed8ca655005b5a297ff1950244a04a7de20483
     let passed = validations.iter().filter(|r| r.status == ValidationStatus::Pass).count();
     let warnings = validations.iter().filter(|r| r.status == ValidationStatus::Warning).count();
     let failed = validations.iter().filter(|r| r.status == ValidationStatus::Fail).count();
@@ -401,7 +430,10 @@ async fn validate_product(
             units_per_carton: product.units_per_carton,
             expected_minimum_carton_weight_g: round(expected_minimum_carton_weight_g),
         },
+<<<<<<< HEAD
         pallet_calculation,
+=======
+>>>>>>> 67ed8ca655005b5a297ff1950244a04a7de20483
         validations,
     }))
 }
@@ -432,16 +464,26 @@ fn convert_weight_to_grams(
 fn convert_dimension_to_centimetres(
     value: f64,
     unit: &str,
+<<<<<<< HEAD
     field: &str,
+=======
+>>>>>>> 67ed8ca655005b5a297ff1950244a04a7de20483
 ) -> Result<f64, (StatusCode, Json<ApiError>)> {
     match normalize_unit(unit).as_str() {
         "cm" | "centimeter" | "centimeters" | "centimetre" | "centimetres" => Ok(value),
         "mm" | "millimeter" | "millimeters" | "millimetre" | "millimetres" => Ok(value / 10.0),
+<<<<<<< HEAD
         "m" | "meter" | "meters" | "metre" | "metres" => Ok(value * 100.0),
         "in" | "inch" | "inches" => Ok(value * 2.54),
         unsupported => Err(bad_request(
             field,
             &format!("Unsupported dimension unit '{}'. Supported units are mm, cm, m, in, and inch.", unsupported),
+=======
+        "in" | "inch" | "inches" => Ok(value * 2.54),
+        unsupported => Err(bad_request(
+            "dimension_unit",
+            &format!("Unsupported dimension unit '{}'. Supported units are mm, cm, in, and inch.", unsupported),
+>>>>>>> 67ed8ca655005b5a297ff1950244a04a7de20483
         )),
     }
 }
@@ -470,8 +512,13 @@ async fn openapi() -> impl IntoResponse {
         "openapi": "3.0.3",
         "info": {
             "title": "Saether Product Data Validator API",
+<<<<<<< HEAD
             "description": "Validates product weights, dimensions, packaging hierarchy, units, and optional pallet height.",
             "version": "1.1.0"
+=======
+            "description": "Validates product weights, dimensions, packaging hierarchy and units.",
+            "version": "1.0.0"
+>>>>>>> 67ed8ca655005b5a297ff1950244a04a7de20483
         },
         "paths": {
             "/health": {
@@ -484,7 +531,11 @@ async fn openapi() -> impl IntoResponse {
             "/api/v1/validate-product": {
                 "post": {
                     "operationId": "ValidateProduct",
+<<<<<<< HEAD
                     "summary": "Validate product and pallet master data",
+=======
+                    "summary": "Validate product master data",
+>>>>>>> 67ed8ca655005b5a297ff1950244a04a7de20483
                     "requestBody": {
                         "required": true,
                         "content": {
@@ -518,6 +569,7 @@ async fn openapi() -> impl IntoResponse {
                         "width": { "type": "number", "example": 10 },
                         "depth": { "type": "number", "example": 5 },
                         "height": { "type": "number", "example": 15 },
+<<<<<<< HEAD
                         "dimension_unit": { "type": "string", "enum": ["mm", "cm", "m", "in", "inch"], "example": "cm" },
                         "units_per_carton": { "type": "integer", "minimum": 1, "example": 6 },
                         "carton_weight": { "type": "number", "example": 3500 },
@@ -538,6 +590,12 @@ async fn openapi() -> impl IntoResponse {
                         "height_unit": { "type": "string", "enum": ["mm", "cm", "m", "in", "inch"], "example": "cm" },
                         "pallet_base_height": { "type": "number", "example": 14.4 },
                         "max_total_height": { "type": "number", "example": 180 }
+=======
+                        "dimension_unit": { "type": "string", "enum": ["mm", "cm", "in", "inch"], "example": "cm" },
+                        "units_per_carton": { "type": "integer", "minimum": 1, "example": 6 },
+                        "carton_weight": { "type": "number", "example": 3500 },
+                        "carton_weight_unit": { "type": "string", "enum": ["g", "kg", "oz"], "example": "g" }
+>>>>>>> 67ed8ca655005b5a297ff1950244a04a7de20483
                     }
                 }
             }
