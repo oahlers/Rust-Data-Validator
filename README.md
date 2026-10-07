@@ -1,41 +1,32 @@
-# Saether Product Data Validator
+# Sæther Product Data Validator V2
 
-Rust/Axum API for validating product master data.
+## Added in V2
+- Volume validation against `width × depth × height`
+- Configurable volume tolerance, default 2%
+- EAN-13 and GTIN-14 check-digit validation
+- Cases-per-layer validation using a simple rectangular grid in both full-carton orientations
+- Units-per-pallet validation
+- Batch endpoint for validating multiple products in one JSON request
 
 ## Endpoints
 - `GET /health`
 - `GET /openapi.json`
 - `POST /api/v1/validate-product`
+- `POST /api/v2/validate-products`
 
-## Run in GitHub Codespaces
+## Important cases-per-layer limitation
+The packing calculation tests two full-carton orientations. It does not calculate mixed-orientation or advanced bin packing. Use the result as a deterministic first-line validation.
+
+## Run
 ```bash
+cargo fmt
+cargo build
 cargo run
 ```
 
-The app listens on `PORT`, defaulting to `10000`.
-
-## Test
+## Single-product test
 ```bash
 curl -X POST http://localhost:10000/api/v1/validate-product \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sku": "TEST-001",
-    "product_name": "Test Moisturizer",
-    "net_weight": 500,
-    "gross_weight": 550,
-    "weight_unit": "g",
-    "width": 10,
-    "depth": 5,
-    "height": 15,
-    "dimension_unit": "cm",
-    "units_per_carton": 6,
-    "carton_weight": 3500,
-    "carton_weight_unit": "g"
-  }'
+-H "Content-Type: application/json" \
+-d @test-v2.json
 ```
-
-## Render settings
-- Runtime: Rust
-- Build command: `cargo build --release`
-- Start command: `./target/release/product-data-validator`
-- Health check: `/health`

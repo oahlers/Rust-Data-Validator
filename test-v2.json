@@ -1,0 +1,32 @@
+{
+  "sku": "V2-001",
+  "product_name": "V2 Test Product",
+  "ean13": "5701234567893",
+  "gtin14": "15701234567890",
+  "net_weight": 500,
+  "gross_weight": 550,
+  "weight_unit": "g",
+  "width": 10,
+  "depth": 5,
+  "height": 15,
+  "dimension_unit": "cm",
+  "declared_volume": 0.75,
+  "volume_unit": "l",
+  "volume_tolerance_percent": 2,
+  "units_per_carton": 6,
+  "carton_weight": 3500,
+  "carton_weight_unit": "g",
+  "pallet": {
+    "cases_per_layer": 16,
+    "layers_per_pallet": 8,
+    "carton_width": 20,
+    "carton_depth": 30,
+    "carton_height": 18,
+    "pallet_width": 80,
+    "pallet_depth": 120,
+    "height_unit": "cm",
+    "pallet_base_height": 14.4,
+    "max_total_height": 180,
+    "declared_units_per_pallet": 768
+  }
+}

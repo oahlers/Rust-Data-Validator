@@ -1,0 +1,36 @@
+{
+  "products": [
+    {
+      "sku": "BATCH-PASS",
+      "product_name": "Valid product",
+      "net_weight": 500,
+      "gross_weight": 550,
+      "weight_unit": "g",
+      "width": 10,
+      "depth": 5,
+      "height": 15,
+      "dimension_unit": "cm",
+      "declared_volume": 750,
+      "volume_unit": "cm3",
+      "units_per_carton": 6,
+      "carton_weight": 3500,
+      "carton_weight_unit": "g"
+    },
+    {
+      "sku": "BATCH-FAIL",
+      "product_name": "Invalid product",
+      "net_weight": 600,
+      "gross_weight": 550,
+      "weight_unit": "g",
+      "width": 10,
+      "depth": 5,
+      "height": 15,
+      "dimension_unit": "cm",
+      "declared_volume": 500,
+      "volume_unit": "cm3",
+      "units_per_carton": 6,
+      "carton_weight": 3000,
+      "carton_weight_unit": "g"
+    }
+  ]
+}
