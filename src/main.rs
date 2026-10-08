@@ -12,7 +12,7 @@ use tower_http::{
 };
 use tracing::info;
 
-const VERSION: &str = "2.6.0";
+const VERSION: &str = "2.6.3";
 
 #[derive(Debug, Deserialize, Clone)]
 struct ProductValidationRequest {
@@ -156,6 +156,36 @@ struct PalletCalculation {
 }
 
 #[derive(Debug, Serialize)]
+struct FlatValidationResponse {
+    sku: String,
+    overall_status: String,
+    passed: usize,
+    warnings: usize,
+    failed: usize,
+    unit_conversion_status: Option<String>,
+    net_vs_gross_weight_status: Option<String>,
+    carton_weight_status: Option<String>,
+    width_depth_status: Option<String>,
+    volume_status: Option<String>,
+    ean13_status: Option<String>,
+    gtin14_status: Option<String>,
+    cases_per_layer_status: Option<String>,
+    pallet_height_status: Option<String>,
+    units_per_pallet_status: Option<String>,
+    layout_orientation: Option<String>,
+    calculated_max_cases_per_layer: Option<u32>,
+    used_cases_per_layer: Option<u32>,
+    calculated_max_layers_by_height: Option<u32>,
+    used_layers_per_pallet: Option<u32>,
+    total_cases_per_pallet: Option<u64>,
+    calculated_units_per_pallet: Option<u64>,
+    total_pallet_height_cm: Option<f64>,
+    max_total_height_cm: Option<f64>,
+    remaining_height_cm: Option<f64>,
+    validation_report: String,
+}
+
+#[derive(Debug, Serialize)]
 struct HealthResponse {
     status: &'static str,
     service: &'static str,
@@ -190,6 +220,7 @@ async fn main() {
         .route("/api/v1/validate-product", post(validate_product_handler))
         .route("/api/v2/validate-products", post(validate_products_handler))
         .route("/api/v3/validate-product-json", post(validate_product_json_handler))
+        .route("/api/v4/validate-product-flat", post(validate_product_flat_handler))
         .layer(cors)
         .layer(TraceLayer::new_for_http());
 
@@ -216,6 +247,7 @@ async fn root() -> Json<Value> {
             "validate_product": "/api/v1/validate-product",
             "validate_products_batch": "/api/v2/validate-products",
             "validate_product_json": "/api/v3/validate-product-json",
+            "validate_product_flat": "/api/v4/validate-product-flat",
             "openapi": "/openapi.json"
         }
     }))
@@ -234,6 +266,22 @@ async fn openapi() -> Json<Value> {
         "message": "Import the maintained Swagger file from the repository into Copilot Studio.",
         "version": VERSION
     }))
+}
+
+async fn validate_product_flat_handler(
+    Json(request): Json<ProductJsonRequest>,
+) -> Result<Json<FlatValidationResponse>, (StatusCode, Json<ApiError>)> {
+    let product: ProductValidationRequest = serde_json::from_str(&request.product_json).map_err(
+        |error| {
+            bad_request(
+                "product_json",
+                &format!("product_json must contain valid product JSON: {}", error),
+            )
+        },
+    )?;
+
+    let response = validate_product(product)?;
+    Ok(Json(flatten_response(response)))
 }
 
 async fn validate_product_json_handler(
@@ -738,6 +786,71 @@ fn validate_pallet(
         max_total_height_cm: round(max_total_height_cm),
         remaining_height_cm: round(remaining_height_cm),
     })
+}
+
+fn flatten_response(response: ProductValidationResponse) -> FlatValidationResponse {
+    let validation_report = response
+        .validations
+        .iter()
+        .map(|validation| {
+            let details = validation
+                .details
+                .as_ref()
+                .map(|value| value.to_string())
+                .unwrap_or_else(|| "{}".to_string());
+            format!(
+                "[{}] {}: {} | details: {}",
+                status_text(&validation.status),
+                validation.rule,
+                validation.message,
+                details
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let pallet = response.pallet_calculation.as_ref();
+
+    FlatValidationResponse {
+        sku: response.sku,
+        overall_status: status_text(&response.overall_status).to_string(),
+        passed: response.summary.passed,
+        warnings: response.summary.warnings,
+        failed: response.summary.failed,
+        unit_conversion_status: status_option_text(response.validation_statuses.unit_conversion),
+        net_vs_gross_weight_status: status_option_text(response.validation_statuses.net_vs_gross_weight),
+        carton_weight_status: status_option_text(response.validation_statuses.carton_weight_validation),
+        width_depth_status: status_option_text(response.validation_statuses.width_depth_validation),
+        volume_status: status_option_text(response.validation_statuses.volume_validation),
+        ean13_status: status_option_text(response.validation_statuses.ean13_validation),
+        gtin14_status: status_option_text(response.validation_statuses.gtin14_validation),
+        cases_per_layer_status: status_option_text(response.validation_statuses.cases_per_layer_validation),
+        pallet_height_status: status_option_text(response.validation_statuses.pallet_height_validation),
+        units_per_pallet_status: status_option_text(response.validation_statuses.units_per_pallet_validation),
+        layout_orientation: pallet.map(|value| value.layout_orientation.clone()),
+        calculated_max_cases_per_layer: pallet.map(|value| value.calculated_max_cases_per_layer),
+        used_cases_per_layer: pallet.map(|value| value.used_cases_per_layer),
+        calculated_max_layers_by_height: pallet.map(|value| value.calculated_max_layers_by_height),
+        used_layers_per_pallet: pallet.map(|value| value.used_layers_per_pallet),
+        total_cases_per_pallet: pallet.map(|value| value.total_cases_per_pallet),
+        calculated_units_per_pallet: pallet.map(|value| value.calculated_units_per_pallet),
+        total_pallet_height_cm: pallet.map(|value| value.total_pallet_height_cm),
+        max_total_height_cm: pallet.map(|value| value.max_total_height_cm),
+        remaining_height_cm: pallet.map(|value| value.remaining_height_cm),
+        validation_report,
+    }
+}
+
+fn status_option_text(status: Option<ValidationStatus>) -> Option<String> {
+    status.map(|value| status_text(&value).to_string())
+}
+
+fn status_text(status: &ValidationStatus) -> &'static str {
+    match status {
+        ValidationStatus::Pass => "PASS",
+        ValidationStatus::Warning => "WARNING",
+        ValidationStatus::Fail => "FAIL",
+    }
 }
 
 fn validation_status_for(
