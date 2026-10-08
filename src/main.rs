@@ -35,6 +35,11 @@ struct ProductValidationRequest {
     pallet: Option<PalletData>,
 }
 
+#[derive(Debug, Deserialize)]
+struct ProductJsonRequest {
+    product_json: String,
+}
+
 #[derive(Debug, Deserialize, Clone)]
 struct PalletData {
     cases_per_layer: u32,
@@ -75,9 +80,24 @@ struct ProductValidationResponse {
     product_name: Option<String>,
     overall_status: ValidationStatus,
     summary: ValidationSummary,
+    validation_statuses: ValidationStatuses,
     normalized_data: NormalizedProductData,
     pallet_calculation: Option<PalletCalculation>,
     validations: Vec<ValidationResult>,
+}
+
+#[derive(Debug, Serialize)]
+struct ValidationStatuses {
+    unit_conversion: Option<ValidationStatus>,
+    net_vs_gross_weight: Option<ValidationStatus>,
+    carton_weight_validation: Option<ValidationStatus>,
+    width_depth_validation: Option<ValidationStatus>,
+    volume_validation: Option<ValidationStatus>,
+    ean13_validation: Option<ValidationStatus>,
+    gtin14_validation: Option<ValidationStatus>,
+    cases_per_layer_validation: Option<ValidationStatus>,
+    pallet_height_validation: Option<ValidationStatus>,
+    units_per_pallet_validation: Option<ValidationStatus>,
 }
 
 #[derive(Debug, Serialize)]
@@ -170,6 +190,7 @@ async fn main() {
         .route("/health", get(health))
         .route("/openapi.json", get(openapi))
         .route("/api/v1/validate-product", post(validate_product_handler))
+        .route("/api/v3/validate-product-json", post(validate_product_json_handler))
         .route("/api/v2/validate-products", post(validate_products_handler))
         .layer(cors)
         .layer(TraceLayer::new_for_http());
@@ -192,11 +213,12 @@ async fn main() {
 async fn root() -> Json<Value> {
     Json(json!({
         "service": "Saether Product Data Validator",
-        "version": "2.0.0",
+        "version": "2.1.0",
         "status": "running",
         "endpoints": {
             "health": "/health",
             "validate_product": "/api/v1/validate-product",
+            "validate_product_json": "/api/v3/validate-product-json",
             "validate_products_batch": "/api/v2/validate-products",
             "openapi": "/openapi.json"
         }
@@ -207,8 +229,23 @@ async fn health() -> Json<HealthResponse> {
     Json(HealthResponse {
         status: "ok",
         service: "product-data-validator",
-        version: "2.0.0",
+        version: "2.1.0",
     })
+}
+
+async fn validate_product_json_handler(
+    Json(request): Json<ProductJsonRequest>,
+) -> Result<Json<ProductValidationResponse>, (StatusCode, Json<ApiError>)> {
+    let product: ProductValidationRequest = serde_json::from_str(&request.product_json).map_err(
+        |error| {
+            bad_request(
+                "product_json",
+                &format!("product_json must contain valid product JSON: {}", error),
+            )
+        },
+    )?;
+
+    validate_product(product).map(Json)
 }
 
 async fn validate_product_handler(
@@ -550,11 +587,25 @@ fn validate_product(
         ValidationStatus::Pass
     };
 
+    let validation_statuses = ValidationStatuses {
+        unit_conversion: validation_status_for(&validations, "unit_conversion"),
+        net_vs_gross_weight: validation_status_for(&validations, "net_vs_gross_weight"),
+        carton_weight_validation: validation_status_for(&validations, "carton_weight_validation"),
+        width_depth_validation: validation_status_for(&validations, "width_depth_validation"),
+        volume_validation: validation_status_for(&validations, "volume_validation"),
+        ean13_validation: validation_status_for(&validations, "ean13_validation"),
+        gtin14_validation: validation_status_for(&validations, "gtin14_validation"),
+        cases_per_layer_validation: validation_status_for(&validations, "cases_per_layer_validation"),
+        pallet_height_validation: validation_status_for(&validations, "pallet_height_validation"),
+        units_per_pallet_validation: validation_status_for(&validations, "units_per_pallet_validation"),
+    };
+
     Ok(ProductValidationResponse {
         sku: product.sku,
         product_name: product.product_name,
         overall_status,
         summary: ValidationSummary { passed, warnings, failed },
+        validation_statuses,
         normalized_data: NormalizedProductData {
             net_weight_g: round(net_weight_g),
             gross_weight_g: round(gross_weight_g),
@@ -570,6 +621,15 @@ fn validate_product(
         pallet_calculation,
         validations,
     })
+}
+fn validation_status_for(
+    validations: &[ValidationResult],
+    rule_name: &str,
+) -> Option<ValidationStatus> {
+    validations
+        .iter()
+        .find(|validation| validation.rule == rule_name)
+        .map(|validation| validation.status.clone())
 }
 
 fn result(rule: &str, status: ValidationStatus, message: &str, details: Value) -> ValidationResult {
@@ -708,7 +768,7 @@ async fn openapi() -> impl IntoResponse {
         "info": {
             "title": "Saether Product Data Validator API",
             "description": "V2 validates product dimensions, weights, volume, EAN-13/GTIN-14, pallet height, cases per layer, units per pallet, and batch requests.",
-            "version": "2.0.0"
+            "version": "2.1.0"
         },
         "paths": {
             "/health": {"get": {"operationId": "HealthCheck", "responses": {"200": {"description": "API is healthy"}}}},
